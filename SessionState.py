@@ -1,5 +1,7 @@
 """Hack to add per-session state to Streamlit.
 
+Works for Streamlit >= v0.65
+
 Usage
 -----
 
@@ -19,16 +21,13 @@ result:
 'Mary'
 
 """
-try:
-    import streamlit.ReportThread as ReportThread
-    from streamlit.server.Server import Server
-except Exception:
-    # Streamlit >= 0.65.0
-    import streamlit.report_thread as ReportThread
-    from streamlit.server.server import Server
+
+import streamlit.report_thread as ReportThread
+from streamlit.server.server import Server
 
 
-class SessionState(object):
+class SessionState():
+    """SessionState: Add per-session state to Streamlit."""
     def __init__(self, **kwargs):
         """A new SessionState object.
 
@@ -79,35 +78,13 @@ def get(**kwargs):
     """
     # Hack to get the session object from Streamlit.
 
-    ctx = ReportThread.get_report_ctx()
+    session_id = ReportThread.get_report_ctx().session_id
+    session_info = Server.get_current()._get_session_info(session_id)
 
-    this_session = None
+    if session_info is None:
+        raise RuntimeError('Could not get Streamlit session object.')
 
-    current_server = Server.get_current()
-    if hasattr(current_server, '_session_infos'):
-        # Streamlit < 0.56
-        session_infos = Server.get_current()._session_infos.values()
-    else:
-        session_infos = Server.get_current()._session_info_by_id.values()
-
-    for session_info in session_infos:
-        s = session_info.session
-        if (
-            # Streamlit < 0.54.0
-            (hasattr(s, '_main_dg') and s._main_dg == ctx.main_dg)
-            or
-            # Streamlit >= 0.54.0
-            (not hasattr(s, '_main_dg') and s.enqueue == ctx.enqueue)
-            or
-            # Streamlit >= 0.65.2
-            (not hasattr(s, '_main_dg') and s._uploaded_file_mgr == ctx.uploaded_file_mgr)
-        ):
-            this_session = s
-
-    if this_session is None:
-        raise RuntimeError(
-            "Oh noes. Couldn't get your Streamlit Session object. "
-            'Are you doing something fancy with threads?')
+    this_session = session_info.session
 
     # Got the session object! Now let's attach some state into it.
 
