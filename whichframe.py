@@ -158,16 +158,21 @@ if st.button("Process video (if your video is long, this may take a while)"):
     ss.video_name = tfile.name
   elif url:
     ss.input = "link"
+    st.write("1")
     ss.video, ss.video_name = fetch_video(url)
+    st.write("2")
     id = extract.video_id(url)
+    st.write("3")
     ss.url = "https://www.youtube.com/watch?v=" + id
   else:
     st.error("Please upload a video or link to a valid YouTube video")
     st.stop()
   print("Downloaded video")
   ss.video_frames, ss.fps = extract_frames(ss.video_name)
+  st.write("4")
   print("Extracted frames")
   ss.video_features = encode_frames(ss.video_frames)
+  st.write("5")
   print("Encoded frames")
   ss.progress = 2
 
