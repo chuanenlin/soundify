@@ -16,7 +16,7 @@ def fetch_video(url):
   streams = yt.streams.filter(adaptive=True, subtype="mp4", resolution="360p", only_video=True)
   length = yt.length
   if length >= 600:
-    st.error("Please find a YouTube video shorter than 10 minutes. Sorry about this, my server capacity is limited for the time being!")
+    st.error("Please find a YouTube video shorter than 10 minutes. Sorry about this, my server capacity is limited for the time being.")
     st.stop()
   video = streams[0]
   return video, video.url
@@ -55,6 +55,7 @@ def encode_frames(video_frames):
   return video_features
 
 def display_results(best_photo_idx):
+  st.markdown("**Top-5 matching results**")
   for frame_id in best_photo_idx:
     st.image(ss.video_frames[frame_id])
     seconds = round(frame_id.cpu().numpy()[0] * N / ss.fps)
@@ -99,14 +100,15 @@ hide_streamlit_style = """
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             * {font-family: Avenir;}
-            h1 {text-align: center; font-size: 42px; font-weight: bold;}
+            h1 {font-size: 42px; font-weight: bold;}
+            .css-gma2qf {display: flex; justify-content: center;}
             a:link {text-decoration: none;}
             a:hover {text-decoration: none;}
             .st-ba {font-family: Avenir;}
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
+# text-align: center;
 ss = SessionState.get(url=None, input=None, video=None, video_name=None, video_frames=None, video_features=None, fps=None, mode=None, query=None, progress=1)
 
 st.title("Which Frame?")
@@ -171,4 +173,4 @@ if ss.progress == 2:
       if ss.text_query is not None and ss.img_query is not None:
         text_and_img_search(ss.text_query, ss.img_query)
 
-st.markdown("This fun experiment was put together by [David](https://chuanenlin.com) at Carnegie Mellon University. The querying is powered by [OpenAI's CLIP neural network](https://openai.com/blog/clip) and the interface with [Streamlit](https://streamlit.io). Many aspects of this project are based on the kind work of [Vladimir Haltakov](https://haltakov.net) and [Haofan Wang](https://haofanwang.github.io).")
+st.markdown("This fun experiment was put together by [David](https://chuanenlin.com) at Carnegie Mellon University. The querying is powered by [OpenAI's CLIP neural network](https://openai.com/blog/clip) and the interface was built with [Streamlit](https://streamlit.io). Many aspects of this project are based on the kind work of [Vladimir Haltakov](https://haltakov.net) and [Haofan Wang](https://haofanwang.github.io).")
