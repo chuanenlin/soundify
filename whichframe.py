@@ -7,7 +7,7 @@ import clip as openai_clip
 import torch
 import math
 import numpy as np
-import plotly.express as px
+# import plotly.express as px
 # import datetime
 import SessionState
 import tempfile
