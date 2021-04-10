@@ -100,8 +100,7 @@ hide_streamlit_style = """
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             * {font-family: Avenir;}
-            h1 {font-size: 42px; font-weight: bold;}
-            .css-gma2qf {display: flex; justify-content: center;}
+            .css-gma2qf {display: flex; justify-content: center; font-size: 42px; font-weight: bold;}
             a:link {text-decoration: none;}
             a:hover {text-decoration: none;}
             .st-ba {font-family: Avenir;}
