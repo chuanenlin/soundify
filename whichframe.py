@@ -133,7 +133,7 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-ss = SessionState.get(url=None, input=None, device=None, model=None, preprocess=None, video=None, video_name=None, video_frames=None, video_features=None, fps=None, mode=None, query=None, progress=1)
+ss = SessionState.get(url=None, input=None, video=None, video_name=None, video_frames=None, video_features=None, fps=None, mode=None, query=None, progress=1)
 
 st.title("Which Frame?")
 
@@ -144,7 +144,7 @@ url = st.text_input("or link to a YouTube video (Example: https://www.youtube.co
 
 N = 30
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu"
 model, preprocess = openai_clip.load("ViT-B/32", device=device)
 
 if st.button("Process video (if your video is long, this may take a while)"):
