@@ -92,13 +92,16 @@ def text_and_img_search(text_search_query, image_search_query, display_results_c
   values, best_photo_idx = similarities.topk(display_results_count, dim=0)
   display_results(best_photo_idx)
 
+st.set_page_config(page_title="Which Frame?", page_icon = "🎥", layout = "centered", initial_sidebar_state = "collapsed")
+
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             * {font-family: Avenir;}
-            h1 {text-align: center; font-size: 42px;}
-            .css-h2raq8 a {color: #CC002B; text-decoration: none;}
+            h1 {text-align: center; font-size: 42px; font-weight: bold;}
+            a:link {text-decoration: none;}
+            a:hover {text-decoration: none;}
             .st-ba {font-family: Avenir;}
             </style>
             """
