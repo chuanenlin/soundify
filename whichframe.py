@@ -111,7 +111,7 @@ ss = SessionState.get(url=None, input=None, video=None, video_name=None, video_f
 
 st.title("Which Frame?")
 
-st.markdown("Given a video, do a **semantic** search. Which frame has a person wearing sunglasses? Which frame has cityscapes at night? Search with **text**, **image**, or a combined **text + image**.")
+st.markdown("Given a video, do a **semantic** search. Which frame has a person wearing sunglasses? Which frame has bright cityscapes at night? Search with **text**, **image**, or a combined **text + image**.")
 
 video_file = st.file_uploader("Upload a video", type=["mp4"])
 url = st.text_input("or link to a YouTube video (Example: https://www.youtube.com/watch?v=BapSQFJPMM0)")
@@ -121,7 +121,7 @@ N = 30
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = openai_clip.load("ViT-B/32", device=device)
 
-if st.button("Process video (if your video is long, this may take a while)"):
+if st.button("Process video (this may take a while)"):
   ss.progress = 1
   ss.video_start_time = 0
   if video_file:
