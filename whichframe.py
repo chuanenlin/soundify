@@ -7,80 +7,51 @@ import clip as openai_clip
 import torch
 import math
 import numpy as np
-# import plotly.express as px
-# import datetime
 import SessionState
 import tempfile
 from humanfriendly import format_timespan
 
-@st.cache()
 def fetch_video(url):
-  streams = YouTube(url).streams.filter(adaptive=True, subtype="mp4", resolution="360p", only_video=True)
-  # if len(streams) == 0:
-    # raise "No suitable stream found for this YouTube video!"
-  # type(streams[0].url)
+  yt = YouTube(url)
+  streams = yt.streams.filter(adaptive=True, subtype="mp4", resolution="360p", only_video=True)
+  length = yt.length
+  if length >= 600:
+    st.error("Please find a YouTube video shorter than 10 minutes. Sorry about this, my server capacity is limited for the time being!")
+    st.stop()
   video = streams[0]
   return video, video.url
 
 @st.cache()
 def extract_frames(video):
-  # The frame images will be stored in video_frames
   frames = []
-
-  # Open the video file
   capture = cv2.VideoCapture(video)
-  # capture = cv2.VideoCapture("video.mkv")
   fps = capture.get(cv2.CAP_PROP_FPS)
-
   current_frame = 0
   while capture.isOpened():
-    # Read the current frame
     ret, frame = capture.read()
-
-    # Convert it to a PIL image (required for CLIP) and store it
     if ret == True:
       frames.append(Image.fromarray(frame[:, :, ::-1]))
     else:
       break
-
-    # Skip N frames
     current_frame += N
     capture.set(cv2.CAP_PROP_POS_FRAMES, current_frame)
-
-  # Print some statistics
-  print(f"Frames extracted: {len(frames)}")
+  # print(f"Frames extracted: {len(frames)}")
 
   return frames, fps
 
 @st.cache()
 def encode_frames(video_frames):
-  # You can try tuning the batch size for very large videos, but it should usually be OK
   batch_size = 256
   batches = math.ceil(len(video_frames) / batch_size)
-
-  # The encoded features will bs stored in video_features
   video_features = torch.empty([0, 512], dtype=torch.float16).to(device)
-
-  # Process each batch
   for i in range(batches):
-    print(f"Processing batch {i+1}/{batches}")
-
-    # Get the relevant frames
     batch_frames = video_frames[i*batch_size : (i+1)*batch_size]
-
-    # Preprocess the images for the batch
     batch_preprocessed = torch.stack([preprocess(frame) for frame in batch_frames]).to(device)
-
-    # Encode with CLIP and normalize
     with torch.no_grad():
       batch_features = model.encode_image(batch_preprocessed)
       batch_features /= batch_features.norm(dim=-1, keepdim=True)
-
-    # Append the batch to the list containing all features
     video_features = torch.cat((video_features, batch_features))
-
-  # Print some stats
-  print(f"Features: {video_features.shape}")
+  # print(f"Features: {video_features.shape}")
   return video_features
 
 def display_results(best_photo_idx):
@@ -144,7 +115,7 @@ url = st.text_input("or link to a YouTube video (Example: https://www.youtube.co
 
 N = 30
 
-device = "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = openai_clip.load("ViT-B/32", device=device)
 
 if st.button("Process video (if your video is long, this may take a while)"):
@@ -158,22 +129,17 @@ if st.button("Process video (if your video is long, this may take a while)"):
     ss.video_name = tfile.name
   elif url:
     ss.input = "link"
-    st.write("1")
     ss.video, ss.video_name = fetch_video(url)
-    st.write("2")
     id = extract.video_id(url)
-    st.write("3")
     ss.url = "https://www.youtube.com/watch?v=" + id
   else:
     st.error("Please upload a video or link to a valid YouTube video")
     st.stop()
-  print("Downloaded video")
+  # print("Downloaded video")
   ss.video_frames, ss.fps = extract_frames(ss.video_name)
-  st.write("4")
-  print("Extracted frames")
+  # print("Extracted frames")
   ss.video_features = encode_frames(ss.video_frames)
-  st.write("5")
-  print("Encoded frames")
+  # print("Encoded frames")
   ss.progress = 2
 
 if ss.input == "file":
