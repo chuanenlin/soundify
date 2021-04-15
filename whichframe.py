@@ -110,7 +110,7 @@ def text_and_img_search(text_search_query, image_search_query, display_results_c
   return result_arr
 
 def user_action(message):
-  url = "https://hooks.slack.com/services/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"
+  url = "https://hooks.slack.com/services/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"
   message = (message)
   slack_data = {"text": message}
   byte_length = str(sys.getsizeof(slack_data))
