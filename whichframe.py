@@ -19,8 +19,8 @@ def fetch_video(url):
   yt = YouTube(url)
   streams = yt.streams.filter(adaptive=True, subtype="mp4", resolution="360p", only_video=True)
   length = yt.length
-  if length >= 600:
-    st.error("Please find a YouTube video shorter than 10 minutes. Sorry about this, my server capacity is limited for the time being.")
+  if length >= 300:
+    st.error("Please find a YouTube video shorter than 5 minutes. Sorry about this, the server capacity is limited for the time being.")
     st.stop()
   video = streams[0]
   return video, video.url
