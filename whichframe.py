@@ -10,6 +10,10 @@ import numpy as np
 import SessionState
 import tempfile
 from humanfriendly import format_timespan
+import json
+import sys
+from random import randrange
+import requests
 
 def fetch_video(url):
   yt = YouTube(url)
@@ -54,17 +58,27 @@ def encode_frames(video_frames):
   # print(f"Features: {video_features.shape}")
   return video_features
 
+def img_to_bytes(img):
+  img_byte_arr = io.BytesIO()
+  img.save(img_byte_arr, format='JPEG')
+  img_byte_arr = img_byte_arr.getvalue()
+  return img_byte_arr
+
 def display_results(best_photo_idx):
   st.markdown("**Top-5 matching results**")
+  result_arr = []
   for frame_id in best_photo_idx:
-    st.image(ss.video_frames[frame_id])
+    result = ss.video_frames[frame_id]
+    st.image(result)
     seconds = round(frame_id.cpu().numpy()[0] * N / ss.fps)
+    result_arr.append(seconds)
     # time = datetime.timedelta(seconds=seconds)
     time = format_timespan(seconds)
     if ss.input == "file":
-      st.write("Seen at " + str(time))
+      st.write("Seen at " + str(time) + " into the video.")
     else:
-      st.markdown("Seen at [" + str(time) + "](" + url + "&t=" + str(seconds) + "s)")
+      st.markdown("Seen at [" + str(time) + "](" + url + "&t=" + str(seconds) + "s) into the video.")
+  return result_arr
 
 def text_search(search_query, display_results_count=5):
   with torch.no_grad():
@@ -72,7 +86,8 @@ def text_search(search_query, display_results_count=5):
     text_features /= text_features.norm(dim=-1, keepdim=True)
   similarities = (100.0 * ss.video_features @ text_features.T)
   values, best_photo_idx = similarities.topk(display_results_count, dim=0)
-  display_results(best_photo_idx)
+  result_arr = display_results(best_photo_idx)
+  return result_arr
 
 def img_search(search_query, display_results_count=5):
   with torch.no_grad():
@@ -91,9 +106,20 @@ def text_and_img_search(text_search_query, image_search_query, display_results_c
     hybrid_features = image_features + text_features
   similarities = (100.0 * ss.video_features @ hybrid_features.T)
   values, best_photo_idx = similarities.topk(display_results_count, dim=0)
-  display_results(best_photo_idx)
+  result_arr = display_results(best_photo_idx)
+  return result_arr
 
-st.set_page_config(page_title="Which Frame?", page_icon = "🎥", layout = "centered", initial_sidebar_state = "collapsed")
+def user_action(message):
+  url = "https://hooks.slack.com/services/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"
+  message = (message)
+  slack_data = {"text": message}
+  byte_length = str(sys.getsizeof(slack_data))
+  headers = {'Content-Type': "application/json", 'Content-Length': byte_length}
+  response = requests.post(url, data=json.dumps(slack_data), headers=headers)
+  if response.status_code != 200:
+    raise Exception(response.status_code, response.text)
+
+st.set_page_config(page_title="Which Frame?", page_icon = "🔍", layout = "centered", initial_sidebar_state = "collapsed")
 
 hide_streamlit_style = """
             <style>
@@ -107,15 +133,21 @@ hide_streamlit_style = """
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-# text-align: center;
-ss = SessionState.get(url=None, input=None, video=None, video_name=None, video_frames=None, video_features=None, fps=None, mode=None, query=None, progress=1)
+
+clustrmaps = """
+            <a href="https://clustrmaps.com/site/1bham" target="_blank" title="Visit tracker"><img src="//www.clustrmaps.com/map_v2.png?d=NhNk5g9hy6Y06nqo7RirhHvZSr89uSS8rPrt471wAXw&cl=ffffff" width="0" height="0"></a>
+            """
+
+st.markdown(clustrmaps, unsafe_allow_html=True)
+
+ss = SessionState.get(url=None, id=None, input=None, file_name=None, video=None, video_name=None, video_frames=None, video_features=None, fps=None, mode=None, query=None, progress=1)
 
 st.title("Which Frame?")
 
-st.markdown("Given a video, do a **semantic** search. Which frame has a person wearing sunglasses? Which frame has bright cityscapes at night? Search with **text**, **image**, or a combined **text + image**.")
+st.markdown("Search a video **semantically**. Which frame has a person with sunglasses and earphones? Try searching with **text**, **image**, or a combined **text + image**.")
 
 video_file = st.file_uploader("Upload a video", type=["mp4"])
-url = st.text_input("or link to a YouTube video (Example: https://www.youtube.com/watch?v=BapSQFJPMM0)")
+url = st.text_input("or link to a YouTube video (Example: https://www.youtube.com/watch?v=sxaTnm_4YMY)")
 
 N = 30
 
@@ -128,14 +160,18 @@ if st.button("Process video (this may take a while)"):
   if video_file:
     ss.input = "file"
     ss.video = video_file
+    ss.file_name = video_file.name
     tfile = tempfile.NamedTemporaryFile(delete=False)
     tfile.write(video_file.read())
     ss.video_name = tfile.name
   elif url:
     ss.input = "link"
-    ss.video, ss.video_name = fetch_video(url)
-    id = extract.video_id(url)
-    ss.url = "https://www.youtube.com/watch?v=" + id
+    if url == "https://www.youtube.com/watch?v=sxaTnm_4YMY":
+      ss.video_name = "baby-driver.mp4"
+    else:
+      ss.video, ss.video_name = fetch_video(url)
+    ss.id = extract.video_id(url)
+    ss.url = "https://www.youtube.com/watch?v=" + ss.id
   else:
     st.error("Please upload a video or link to a valid YouTube video")
     st.stop()
@@ -154,22 +190,44 @@ elif ss.input == "link":
 if ss.progress == 2:
   ss.mode = st.selectbox("How would you like to search?",("Text", "Image", "Text + Image"))
   if ss.mode == "Text":
-    ss.text_query = st.text_input("Enter text query (Example: pyramids)")
+    ss.text_query = st.text_input("Enter text query (Example: a person with sunglasses and earphones)")
   elif ss.mode == "Image":
-    ss.img_query = st.file_uploader("Upload image query", type=["png", "jpg", "jpeg"])
+    ss.img_query = st.file_uploader("Upload image query", type=["jpg", "jpeg"])
   else:
-    ss.text_query = st.text_input("Enter text query (Example: pyramids)")
-    ss.img_query = st.file_uploader("Upload image query", type=["png", "jpg", "jpeg"])
+    ss.text_query = st.text_input("Enter text query (Example: a person with sunglasses and earphones)")
+    ss.img_query = st.file_uploader("Upload image query", type=["jpg", "jpeg"])
 
   if st.button("Submit"):
     if ss.mode == "Text":
       if ss.text_query is not None:
         text_search(ss.text_query)
+        if ss.input == "link":
+          user_action("text\n" + str(ss.url) + "\n" + str(ss.text_query))
+        else:
+          user_action("text\n" + str(ss.file_name) + "\n" + str(ss.text_query))
     elif ss.mode == "Image":
       if ss.img_query is not None:
         img_search(ss.img_query)
+        img_file_name = str(randrange(1, 999999999999)) + ".jpg"
+        img_to_save = Image.open(ss.img_query)
+        img_to_save.save("./images/" + img_file_name, "JPEG")
+        if ss.input == "link":
+          user_action("image\n" + str(ss.url) + "\n" + str(img_file_name))
+        else:
+          user_action("image\n" + str(ss.file_name) + "\n" + str(img_file_name))
     else:
       if ss.text_query is not None and ss.img_query is not None:
         text_and_img_search(ss.text_query, ss.img_query)
+        img_file_name = str(randrange(1, 999999999999)) + ".jpg"
+        img_to_save = Image.open(ss.img_query)
+        img_to_save.save("./images/" + img_file_name, "JPEG")
+        if ss.input == "link":
+          user_action("text + image\n" + str(ss.url) + "\n" + str(ss.text_query) + "\n" + str(img_file_name))
+        else:
+          user_action("text + image\n" + str(ss.file_name) + "\n" + str(ss.text_query) + "\n" + str(img_file_name))
 
 st.markdown("This fun experiment was put together by [David](https://chuanenlin.com) at Carnegie Mellon University. The querying is powered by [OpenAI's CLIP neural network](https://openai.com/blog/clip) and the interface was built with [Streamlit](https://streamlit.io). Many aspects of this project are based on the kind work of [Vladimir Haltakov](https://haltakov.net) and [Haofan Wang](https://haofanwang.github.io).")
+st.markdown("[Share on Twitter](https://twitter.com/intent/tweet?text=Check+out+this+video+search+powered+by+AI%21%0D%0A%0D%0A%E2%9C%A8http%3A%2F%2Fwhichframe.com%E2%9C%A8%0D%0A%0D%0AFor+example%3A+Which+video+frame+has+a+person+wearing+glasses%3F%0D%0A%0D%0ASearch+with+text%2C+image%2C+or+text+%2B+image.%0D%0A%0D%0A%F0%9F%91%87+More+examples%0D%0Ahttp%3A%2F%2Ftwitter.com)")
+st.markdown("[Share on Facebook](https://www.facebook.com/sharer/sharer.php?u=whichframe.com&quote=Check%20out%20this%20video%20search%20powered%20by%20AI!%0D%0A%0D%0AFor%20example%3A%20Which%20video%20frame%20has%20a%20person%20wearing%20glasses%3F)")
+st.markdown("[Share on Reddit](https://www.reddit.com/submit?url=http%3A%2F%2Fwhichframe.com&title=Check%20out%20this%20video%20search%20powered%20by%20AI!)")
+st.markdown("[Privacy Policy](http://chuanenlin.com/whichframe/privacy-policy.html)")
