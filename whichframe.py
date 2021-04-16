@@ -188,14 +188,14 @@ elif ss.input == "link":
   st.video(ss.url)
 
 if ss.progress == 2:
-  ss.mode = st.selectbox("How would you like to search?",("Text", "Image", "Text + Image"))
+  ss.mode = st.selectbox("Select a search method",("Text", "Image", "Text + Image"))
   if ss.mode == "Text":
     ss.text_query = st.text_input("Enter text query (Example: a person with sunglasses and earphones)")
   elif ss.mode == "Image":
-    ss.img_query = st.file_uploader("Upload image query", type=["jpg", "jpeg"])
+    ss.img_query = st.file_uploader("Upload image query", type=["png", "jpg", "jpeg"])
   else:
     ss.text_query = st.text_input("Enter text query (Example: a person with sunglasses and earphones)")
-    ss.img_query = st.file_uploader("Upload image query", type=["jpg", "jpeg"])
+    ss.img_query = st.file_uploader("Upload image query", type=["png", "jpg", "jpeg"])
 
   if st.button("Submit"):
     if ss.mode == "Text":
@@ -208,9 +208,9 @@ if ss.progress == 2:
     elif ss.mode == "Image":
       if ss.img_query is not None:
         img_search(ss.img_query)
-        img_file_name = str(randrange(1, 999999999999)) + ".jpg"
+        img_file_name = str(randrange(1, 999999999999)) + ".png"
         img_to_save = Image.open(ss.img_query)
-        img_to_save.save("./images/" + img_file_name, "JPEG")
+        img_to_save.save("./images/" + img_file_name, "PNG")
         if ss.input == "link":
           user_action("image\n" + str(ss.url) + "\n" + str(img_file_name))
         else:
@@ -218,16 +218,16 @@ if ss.progress == 2:
     else:
       if ss.text_query is not None and ss.img_query is not None:
         text_and_img_search(ss.text_query, ss.img_query)
-        img_file_name = str(randrange(1, 999999999999)) + ".jpg"
+        img_file_name = str(randrange(1, 999999999999)) + ".png"
         img_to_save = Image.open(ss.img_query)
-        img_to_save.save("./images/" + img_file_name, "JPEG")
+        img_to_save.save("./images/" + img_file_name, "PNG")
         if ss.input == "link":
           user_action("text + image\n" + str(ss.url) + "\n" + str(ss.text_query) + "\n" + str(img_file_name))
         else:
           user_action("text + image\n" + str(ss.file_name) + "\n" + str(ss.text_query) + "\n" + str(img_file_name))
 
-# st.markdown("This fun experiment was put together by [David Chuan-en Lin](https://chuanenlin.com) at Carnegie Mellon University. The querying is powered by [OpenAI's CLIP neural network](https://openai.com/blog/clip) and the interface was built with [Streamlit](https://streamlit.io). Many aspects of this project are based on the kind work of [Vladimir Haltakov](https://haltakov.net) and [Haofan Wang](https://haofanwang.github.io).")
-# st.markdown("[Share on Twitter](https://twitter.com/intent/tweet?text=Check+out+this+video+search+powered+by+AI%21%0D%0A%0D%0A%E2%9C%A8http%3A%2F%2Fwhichframe.com%E2%9C%A8%0D%0A%0D%0AFor+example%3A+Which+video+frame+has+a+person+wearing+glasses%3F%0D%0A%0D%0ASearch+with+text%2C+image%2C+or+text+%2B+image.%0D%0A%0D%0A%F0%9F%91%87+More+examples%0D%0Ahttp%3A%2F%2Ftwitter.com)")
-# st.markdown("[Share on Facebook](https://www.facebook.com/sharer/sharer.php?u=whichframe.com&quote=Check%20out%20this%20video%20search%20powered%20by%20AI!%0D%0A%0D%0AFor%20example%3A%20Which%20video%20frame%20has%20a%20person%20wearing%20glasses%3F)")
-# st.markdown("[Share on Reddit](https://www.reddit.com/submit?url=http%3A%2F%2Fwhichframe.com&title=Check%20out%20this%20video%20search%20powered%20by%20AI!)")
-# st.markdown("[Privacy Policy](http://chuanenlin.com/whichframe/privacy-policy.html)")
+st.markdown("This fun experiment was put together by [David Chuan-en Lin](https://chuanenlin.com) at Carnegie Mellon University. The querying is powered by [OpenAI's CLIP neural network](https://openai.com/blog/clip) and the interface was built with [Streamlit](https://streamlit.io). Many aspects of this project are based on the kind work of [Vladimir Haltakov](https://haltakov.net) and [Haofan Wang](https://haofanwang.github.io).")
+st.markdown("[Share on Twitter](https://twitter.com/intent/tweet?text=Check+out+this+video+search+powered+by+AI%21%0D%0A%0D%0A%E2%9C%A8http%3A%2F%2Fwhichframe.com%E2%9C%A8%0D%0A%0D%0AFor+example%3A+Which+video+frame+has+a+person+wearing+glasses%3F%0D%0A%0D%0ASearch+with+text%2C+image%2C+or+text+%2B+image.%0D%0A%0D%0A%F0%9F%91%87+More+examples%0D%0Ahttp%3A%2F%2Ftwitter.com)")
+st.markdown("[Share on Facebook](https://www.facebook.com/sharer/sharer.php?u=whichframe.com&quote=Check%20out%20this%20video%20search%20powered%20by%20AI!%0D%0A%0D%0AFor%20example%3A%20Which%20video%20frame%20has%20a%20person%20wearing%20glasses%3F)")
+st.markdown("[Share on Reddit](https://www.reddit.com/submit?url=http%3A%2F%2Fwhichframe.com&title=Check%20out%20this%20video%20search%20powered%20by%20AI!)")
+st.markdown("[Privacy Policy](http://chuanenlin.com/whichframe/privacy-policy.html)")
