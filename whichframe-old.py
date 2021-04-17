@@ -146,8 +146,8 @@ st.title("Which Frame?")
 
 st.markdown("Search a video **semantically**. Which frame has a person with sunglasses and earphones? Try searching with **text**, **image**, or a combined **text + image**.")
 
-# video_file = st.file_uploader("Upload a video", type=["mp4"])
-url = st.text_input("Link to a YouTube video (Example: https://www.youtube.com/watch?v=sxaTnm_4YMY)")
+video_file = st.file_uploader("Upload a video", type=["mp4"])
+url = st.text_input("or link to a YouTube video (Example: https://www.youtube.com/watch?v=sxaTnm_4YMY)")
 
 N = 30
 
@@ -157,14 +157,14 @@ model, preprocess = openai_clip.load("ViT-B/32", device=device)
 if st.button("Process video (this may take a while)"):
   ss.progress = 1
   ss.video_start_time = 0
-  # if video_file:
-  #   ss.input = "file"
-  #   ss.video = video_file
-  #   ss.file_name = video_file.name
-  #   tfile = tempfile.NamedTemporaryFile(delete=False)
-  #   tfile.write(video_file.read())
-  #   ss.video_name = tfile.name
-  if url:
+  if video_file:
+    ss.input = "file"
+    ss.video = video_file
+    ss.file_name = video_file.name
+    tfile = tempfile.NamedTemporaryFile(delete=False)
+    tfile.write(video_file.read())
+    ss.video_name = tfile.name
+  elif url:
     ss.input = "link"
     if url == "https://www.youtube.com/watch?v=sxaTnm_4YMY":
       ss.video_name = "baby-driver.mp4"
@@ -188,7 +188,7 @@ elif ss.input == "link":
   st.video(ss.url)
 
 if ss.progress == 2:
-  ss.mode = st.selectbox("Select a search method (text, image, or text + image)",("Text", "Image", "Text + Image"))
+  ss.mode = st.selectbox("Select a search method",("Text", "Image", "Text + Image"))
   if ss.mode == "Text":
     ss.text_query = st.text_input("Enter text query (Example: a person with sunglasses and earphones)")
   elif ss.mode == "Image":
