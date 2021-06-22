@@ -1,0 +1,8 @@
+numpy
+Pillow
+streamlit
+pytube
+opencv-python-headless
+torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+git+https://github.com/openai/CLIP.git
+humanfriendly
