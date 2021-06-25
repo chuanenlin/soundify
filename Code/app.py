@@ -1,27 +1,27 @@
-import streamlit as st
-import cv2
-from PIL import Image
-import clip as openai_clip
-import torch
-import math
-import numpy as np
-import SessionState
 import json
-import sys
-import requests
-from torchvision.datasets import CIFAR100
+import math
 import os
-import scipy.signal as si
-from scipy import ndimage
-import moviepy.editor as mpe
+import sys
+import clip as openai_clip
+import cv2
+import more_itertools
 import moviepy.audio.fx.all as afx
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+import moviepy.editor as mpe
+import numpy as np
+import requests
+import scipy.signal as si
+import streamlit as st
+import torch
 from matplotlib import cm
-from torchray.attribution.grad_cam import grad_cam
+from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+from natsort import natsorted
+from PIL import Image
 from pydub import AudioSegment, silence
 from pydub.playback import play
-import more_itertools
-from natsort import natsorted
+from scipy import ndimage
+from torchray.attribution.grad_cam import grad_cam
+from torchvision.datasets import CIFAR100
+import SessionState
 
 
 @st.cache(show_spinner=False)
@@ -72,7 +72,7 @@ def video_to_scenes(video):
 	prev_index = 0
 	scenes = []
 	scene_lengths = []
-	counter = 1
+	counter = 0
 	for index in indexes:
 		# print(str(index - 1) + ":" + str(index))
 		# st.image(frames[index - 1])
@@ -114,7 +114,6 @@ def encode_scene(video_frames):
 	# print(f"Features: {video_features.shape}")
 	return video_features
 
-
 @st.cache(show_spinner=False)
 def classify_audio_for_scene(word_list, scene_features):
 	# text_inputs = torch.cat([openai_clip.tokenize(f"a photo of a {word}") for word in word_list]).to(device)
@@ -133,6 +132,27 @@ def classify_audio_for_scene(word_list, scene_features):
 		predicted_audio.append(word_list[word_idx])
 	# print("==========")
 	return predicted_audio
+
+def sort_ambient_predictions(ambient_predictions, salient_predictions):
+	ambient_text = torch.cat([openai_clip.tokenize(
+		f"{ambient}") for ambient in ambient_predictions]).to(device)
+	salient_text = torch.cat([openai_clip.tokenize(
+		f"{salient}") for salient in salient_predictions]).to(device)
+	with torch.no_grad():
+		ambient_text_features = ss.model.encode_text(ambient_text)
+		ambient_text_features /= ambient_text_features.norm(dim=-1, keepdim=True)
+		salient_text_features = ss.model.encode_text(salient_text)
+		salient_text_features /= salient_text_features.norm(dim=-1, keepdim=True)
+	logit_scale = ss.model.logit_scale.exp()
+	similarities = (logit_scale * salient_text_features @
+					ambient_text_features.t()).softmax(dim=-1)
+	probs, word_idxs = similarities[0].topk(5)
+	sorted_ambient_audio = []
+	for prob, word_idx in zip(probs, word_idxs):
+		# print(word_list[index] + ": " + str(100 * value.item()))
+		sorted_ambient_audio.append(ambient_predictions[word_idx])
+	# print("==========")
+	return sorted_ambient_audio
 
 
 def min_max_norm(array):
@@ -273,7 +293,7 @@ def generate_audio(audio_label, scene_meta, present_ids, start, scene_length, nu
 	# play(full_track)
 	# st.write(full_track.duration_seconds)
 	# play(full_track)
-	# TODO FADE IN FADE OUT
+	# TODO: FADE IN FADE OUT
 	return full_track
 
 def generate_audio_for_scene(scene, audio_list, scene_length):
@@ -303,6 +323,13 @@ def generate_audio_for_scene(scene, audio_list, scene_length):
 	# st.write(len(audio_tracks))
 	for audio_track in audio_tracks:
 		scene_track = scene_track.overlay(audio_track)
+	return scene_track
+
+def generate_ambient_for_scene(audio, scene_length):
+	scene_track = AudioSegment.silent(duration=scene_length * 1000)
+	if audio != "none":
+		audio_track = AudioSegment.from_file("sounds/" + audio + ".wav", format="wav")[:scene_length * 1000] - 5
+		scene_track = scene_track.overlay(audio_track, position=0.05 * 1000)
 	return scene_track
 
 def merge_scenes():
@@ -357,7 +384,7 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.title("Soundify")
 ss = SessionState.get(video=None, video_name=None, scenes=None, scene_lengths=None, fps=None, num_scenes=None,
-					  scene_features=None, predicted_audios=None, scene_audios=None, curr_scene=None, progress=1)
+					  scene_features=None, predicted_salient_audios=None, predicted_ambient_audios=None, salient_audios=None, ambient_audios=None, scenes_with_ambient=None, curr_scene=None, progress=1)
 
 ss.video = st.file_uploader("Upload a video", type=["mp4"])
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -377,50 +404,50 @@ if ss.video and ss.progress == 1:
 		for scene in ss.scenes:
 			scene_feature = encode_scene(scene)
 			ss.scene_features.append(scene_feature)
-	word_list = ["car", "lion", "helicopter", "telephone", "cooking", "fire", "bike",
+	salient_list = ["car", "lion", "helicopter", "telephone", "cooking", "fire", "bike",
 				 "waterfall", "camera", "keyboard", "subway", "go kart", "people", "snow", "forest"]
+	ambient_list = ["traffic", "africa", "blizzard", "room", "street"]
 	# word_list = ["dog", "beach", "people", "road", "apple", "airplane", "rain", "cars"]
 	# word_list = ["people", "taxi", "car", "building", "chess", "night", "camera", "street", "nyc", "bicycle"]
-	ss.predicted_audios = []
-	ss.scene_audios = []
+	ss.predicted_salient_audios, ss.salient_audios, ss.predicted_ambient_audios, ss.ambient_audios, ss.scenes_with_ambient = [], [], [], [], []
 	with st.spinner("Classifying audio for scenes..."):
 		for i in range(ss.num_scenes):
-			predictions = classify_audio_for_scene(word_list, ss.scene_features[i])
-			ss.predicted_audios.append(predictions)
-			ss.scene_audios.append(predictions[0:1])
-			# imageio.mimsave(str(i) + ".gif", ss.scenes[i], fps=1)
+			salient_predictions = classify_audio_for_scene(salient_list, ss.scene_features[i])
+			ss.predicted_salient_audios.append(salient_predictions)
+			ss.salient_audios.append(salient_predictions[0:1])
+			ambient_predictions = classify_audio_for_scene(ambient_list, ss.scene_features[i])
+			ss.predicted_ambient_audios.append(ambient_predictions)
+			ss.ambient_audios.append("none")
+			ss.scenes_with_ambient.append(False)
 	ss.progress = 2
 
 if ss.progress == 2:
 	ss.curr_scene = st.select_slider(
 		"Select scene", options=list(range(1, ss.num_scenes + 1)))
 	preview = st.empty()
-	# TODO: Fix bug needing to select audio twice
-	ss.scene_audios[ss.curr_scene - 1] = st.multiselect(
-		"Select sound(s) for scene", ss.predicted_audios[ss.curr_scene - 1], ss.scene_audios[ss.curr_scene - 1])
-	add_ambient = st.checkbox("Add ambient sound")
-	# TODO: Ambient sound feature
+	ss.salient_audios[ss.curr_scene - 1] = st.multiselect("Select sound(s) for scene", ss.predicted_salient_audios[ss.curr_scene - 1], ss.salient_audios[ss.curr_scene - 1])
+	add_ambient = st.checkbox("Add ambient sound", ss.scenes_with_ambient[ss.curr_scene - 1])
+	# st.write(ss.ambient_audios[ss.curr_scene - 1])
 	if add_ambient:
-		st.write("Ambient sound support work in progress!")
-	video_file = open("temp/" + str(ss.curr_scene) + ".mp4", 'rb')
+		ss.predicted_ambient_audios[ss.curr_scene - 1] = sort_ambient_predictions(ss.predicted_ambient_audios[ss.curr_scene - 1], ss.salient_audios[ss.curr_scene - 1])
+		ss.ambient_audios[ss.curr_scene - 1] = st.selectbox("Select ambient sound for scene", ss.predicted_ambient_audios[ss.curr_scene - 1])
+		ss.scenes_with_ambient[ss.curr_scene - 1] = True
+		# st.write(ss.ambient_audios[ss.curr_scene - 1])
+	else:
+		ss.ambient_audios[ss.curr_scene - 1] = "none"
+		ss.scenes_with_ambient[ss.curr_scene - 1] = False
+	video_file = open("temp/" + str(ss.curr_scene - 1) + ".mp4", 'rb')
 	video_bytes = video_file.read()
 	preview.video(video_bytes)
 
-	# genre = st.radio("What's your favorite movie genre", ('Comedy', 'Drama', 'Documentary'))
-	# audio_file = open("sounds/lion.wav", "rb")
-	# audio_bytes = audio_file.read()
-	# st.audio(audio_bytes, format="audio/wav")
-
 if st.button("Soundify!"):
-	# generate_audio_for_scene(ss.scenes[5], ss.scene_audios[5], ss.scene_lengths[5]) # single scene testing
-	# total_track = AudioSegment.silent(duration=0)
-	# total_track = AudioSegment.empty()
-	scene_counter = 1
+	# generate_audio_for_scene(ss.scenes[5], ss.salient_audios[5], ss.scene_lengths[5]) # single scene testing
+	scene_counter = 0
 	with st.spinner("Generating audio for scenes..."):
-		for scene, scene_audio, scene_length in zip(ss.scenes, ss.scene_audios, ss.scene_lengths):
-			# total_track = total_track.append(generate_audio_for_scene(scene, scene_audio, scene_length), crossfade=0)
-			scene_track = generate_audio_for_scene(
-				scene, scene_audio, scene_length)
+		for scene, salient_audio, ambient_audio, scene_length in zip(ss.scenes, ss.salient_audios, ss.ambient_audios, ss.scene_lengths):
+			salient_track = generate_audio_for_scene(scene, salient_audio, scene_length)
+			ambient_track = generate_ambient_for_scene(ambient_audio, scene_length)
+			scene_track = salient_track.overlay(ambient_track)
 			scene_track.export("temp/" + str(scene_counter) + ".wav", format="wav")
 			audio_clip = mpe.AudioFileClip("temp/" + str(scene_counter) + ".wav")
 			video_clip = mpe.VideoFileClip("temp/" + str(scene_counter) + ".mp4")
@@ -428,6 +455,5 @@ if st.button("Soundify!"):
 			combined_clip.write_videofile("processed/" + str(scene_counter) + ".mp4", temp_audiofile='temp-audio.m4a',
 										remove_temp=True, codec="libx264", audio_codec="aac", fps=ss.fps, logger=None)
 			scene_counter += 1
-		# play(total_track)
 	with st.spinner("Merging scenes..."):
 		merge_scenes()
