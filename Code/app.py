@@ -104,7 +104,7 @@ def encode_scene(video_frames):
 	# video_features = torch.empty([0, 512], dtype=torch.float16).to(device)
 	video_features = torch.empty([0, 1024], dtype=torch.float16).to(device)
 	for i in range(batches):
-		batch_frames = video_frames[i*batch_size: (i+1)*batch_size]
+		batch_frames = video_frames[i * batch_size:(i + 1) * batch_size]
 		batch_preprocessed = torch.stack(
 			[preprocess(frame) for frame in batch_frames]).to(device)
 		with torch.no_grad():
@@ -202,7 +202,7 @@ def heatmap(image: torch.Tensor, heatmap: torch.Tensor, size=None, alpha=0.6):
 	return Image.fromarray((alpha * hm + (1 - alpha) * img).astype(np.uint8)), pan, volume
 
 
-def align_scene_and_audio(scene, audio_list):
+def align_scene_and_audio(scene, audio_list): #TODO: Bug? Am I calculating alignment for each audio separately, or together?
 	# print(len(scene))
 	text = openai_clip.tokenize(audio_list).to(device)
 	scene_meta = []
@@ -232,10 +232,10 @@ def align_scene_and_audio(scene, audio_list):
 				image[0], saliency[0][0, ].detach().type(torch.float32).cpu(), alpha=0.7)
 			pans.append(pan)
 			volumes.append(volume)
-			# st.image(hm)
+			st.image(hm)
 			# st.write(prob)
-			# st.write("Pan:" + str(pan))
-			# st.write("Volume:" + str(volume))
+			st.write("Pan:" + str(pan))
+			st.write("Volume:" + str(volume))
 			# hms.append(hm)
 		frame_meta = []
 		for audio, prob, pan, volume in zip(audio_list, probs, pans, volumes):
@@ -246,7 +246,9 @@ def align_scene_and_audio(scene, audio_list):
 	# st.write(scene_meta[0][0])
 	return scene_meta
 
-
+#TODO: Match similar length audio clips
+#TODO: Handle too-short audio clips
+#TODO: Smoother transitions
 def generate_audio(audio_label, scene_meta, present_ids, start, scene_length, num_frames):
 	start += 0.05
 	crossfade_duration = 500
@@ -272,7 +274,7 @@ def generate_audio(audio_label, scene_meta, present_ids, start, scene_length, nu
 		elif time == num_frames - 1:  # end
 			# st.write("last one " + str(time))
 			this_sound = adjusted_sound[(
-				time) * crossfade_duration - 500:scene_length * 1000]
+				time) * 1000 - crossfade_duration:scene_length * 1000]
 			# this_sound = adjusted_sound[(time) * 1000:scene_length * 1000]
 			audio_track = audio_track.append(
 				this_sound, crossfade=crossfade_duration)
@@ -303,8 +305,7 @@ def generate_audio_for_scene(scene, audio_list, scene_length):
 	for audio_label in audio_list:  # iterate through each audio
 		present_ids = []
 		for i in range(len(scene)):  # iterate through frames
-			# iterate through present sounds (per frame)
-			for j in range(len(scene_meta[i])):
+			for j in range(len(scene_meta[i])): # iterate through present sounds (per frame)
 				if audio_label in scene_meta[i][j]:
 					present_ids.append([i, j])
 		# st.write(audio_label)
@@ -404,7 +405,7 @@ if ss.video and ss.progress == 1:
 		for scene in ss.scenes:
 			scene_feature = encode_scene(scene)
 			ss.scene_features.append(scene_feature)
-	salient_list = ["car", "lion", "helicopter", "telephone", "cooking", "fire", "bike",
+	salient_list = ["car", "lion", "helicopter", "telephone", "cooking", "fire", "bicycle",
 				 "waterfall", "camera", "keyboard", "subway", "go kart", "people", "snow", "forest"]
 	ambient_list = ["traffic", "africa", "blizzard", "room", "street"]
 	# word_list = ["dog", "beach", "people", "road", "apple", "airplane", "rain", "cars"]
@@ -414,7 +415,7 @@ if ss.video and ss.progress == 1:
 		for i in range(ss.num_scenes):
 			salient_predictions = classify_audio_for_scene(salient_list, ss.scene_features[i])
 			ss.predicted_salient_audios.append(salient_predictions)
-			ss.salient_audios.append(salient_predictions[0:1])
+			ss.salientaudios.append(salient_predictions[0:1])
 			ambient_predictions = classify_audio_for_scene(ambient_list, ss.scene_features[i])
 			ss.predicted_ambient_audios.append(ambient_predictions)
 			ss.ambient_audios.append("none")
@@ -423,11 +424,11 @@ if ss.video and ss.progress == 1:
 
 if ss.progress == 2:
 	ss.curr_scene = st.select_slider(
-		"Select scene", options=list(range(1, ss.num_scenes + 1)))
+		"Select scene",_ options=list(range(1, ss.num_scenes + 1)))
 	preview = st.empty()
 	ss.salient_audios[ss.curr_scene - 1] = st.multiselect("Select sound(s) for scene", ss.predicted_salient_audios[ss.curr_scene - 1], ss.salient_audios[ss.curr_scene - 1])
 	add_ambient = st.checkbox("Add ambient sound", ss.scenes_with_ambient[ss.curr_scene - 1])
-	# st.write(ss.ambient_audios[ss.curr_scene - 1])
+	st.write(ss.ambient_audios[ss.curr_scene - 1])
 	if add_ambient:
 		ss.predicted_ambient_audios[ss.curr_scene - 1] = sort_ambient_predictions(ss.predicted_ambient_audios[ss.curr_scene - 1], ss.salient_audios[ss.curr_scene - 1])
 		ss.ambient_audios[ss.curr_scene - 1] = st.selectbox("Select ambient sound for scene", ss.predicted_ambient_audios[ss.curr_scene - 1])
@@ -441,7 +442,7 @@ if ss.progress == 2:
 	preview.video(video_bytes)
 
 if st.button("Soundify!"):
-	# generate_audio_for_scene(ss.scenes[5], ss.salient_audios[5], ss.scene_lengths[5]) # single scene testing
+	# generate_audio_for_scene(ss.scenes[3], ss.salient_audios[3], ss.scene_lengths[3]) # single scene testing
 	scene_counter = 0
 	with st.spinner("Generating audio for scenes..."):
 		for scene, salient_audio, ambient_audio, scene_length in zip(ss.scenes, ss.salient_audios, ss.ambient_audios, ss.scene_lengths):
