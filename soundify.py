@@ -318,7 +318,7 @@ def generate_ambient_for_scene(audio, scene_length):
 
 # Merges all the scenes together into an output video
 def merge_scenes():
-	output_name = "soundify_output.mp4"
+	output_name = "soundify-output.mp4"
 	merge = []
 	for root, dirs, files in os.walk(os.getcwd() + "/processed"):
 		files = natsorted(files)

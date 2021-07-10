@@ -19,11 +19,11 @@ cd soundify
 pip install -r requirements.txt
 ```
 
-3.  Download the [sound samples](https://drive.google.com/file/d/1Ag1bcTJgJIDn92afHja86zxGt_YDgUta/view?usp=sharing) and unzip them under the **sound** directory.
+3.  Download the [sound samples](https://drive.google.com/file/d/1Ag1bcTJgJIDn92afHja86zxGt_YDgUta/view?usp=sharing), unzip, and save them under the **sound** directory.
 
-You may add your own sound samples (in .wav format) by adding them in the **sound** directory and updating **main-sounds.txt** or **ambient-sounds.txt** with their filenames (without filename extension).
+    You may add your own sound samples (in .wav format) by adding them under the **sound** directory and updating **main-sounds.txt** or **ambient-sounds.txt** with their filenames (without filename extension).
 
-4.  Download the [demo video](https://drive.google.com/file/d/1zaqumFFkAavdAwO-pkgn_xUPiRgpz5iA/view?usp=sharing).
+1.  Download the [demo video](https://drive.google.com/file/d/1zaqumFFkAavdAwO-pkgn_xUPiRgpz5iA/view?usp=sharing) and save it under the root directory.
 
 ---
 
