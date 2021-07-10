@@ -6,7 +6,8 @@ Soundify matches audio clips to video. The tool builds on [CLIP](https://openai.
 
 ## Setting up 
 
-2. Clone the repository.
+1.  Clone the repository.
+
 ```python
 git clone https://github.com/runwayml/soundify.git
 cd soundify
@@ -18,11 +19,11 @@ cd soundify
 pip install -r requirements.txt
 ```
 
-2.  Download the [sound samples](https://drive.google.com/file/d/1Ag1bcTJgJIDn92afHja86zxGt_YDgUta/view?usp=sharing) and unzip them under the **sound** directory.
+3.  Download the [sound samples](https://drive.google.com/file/d/1Ag1bcTJgJIDn92afHja86zxGt_YDgUta/view?usp=sharing) and unzip them under the **sound** directory.
 
-    You may add your own sound samples (in .wav format) by adding them in the **sound** directory and updating **main-sounds.txt** or **ambient-sounds.txt** with their filenames (without filename extension).
+You may add your own sound samples (in .wav format) by adding them in the **sound** directory and updating **main-sounds.txt** or **ambient-sounds.txt** with their filenames (without filename extension).
 
-3.  Optionally, download the [demo video](https://drive.google.com/file/d/1zaqumFFkAavdAwO-pkgn_xUPiRgpz5iA/view?usp=sharing).
+4.  Download the [demo video](https://drive.google.com/file/d/1zaqumFFkAavdAwO-pkgn_xUPiRgpz5iA/view?usp=sharing).
 
 ---
 
