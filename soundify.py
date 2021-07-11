@@ -329,7 +329,7 @@ def merge_scenes():
 				merge.append(video_file)
 	merge_clip = mpe.concatenate_videoclips(merge)
 
-	# # Optionally, add a backround music track
+	# # Optionally, add a background music track
 	# background_music = mpe.AudioFileClip("sounds/supersonic.mp3")
 	# background_music = afx.volumex(background_music, 0.5)
 	# combined_audio = mpe.CompositeAudioClip([merge_clip.audio, background_music])
@@ -427,7 +427,7 @@ if ss.progress == 2:
 		"Add ambient sound", ss.scenes_with_ambient[ss.curr_scene - 1])
 	# If user wishes to add an ambient sound
 	if add_ambient:
-		# Sort predicted ambient sounds based on what the user-selected for the main sound(s)
+		# Sort predicted ambient sounds based on what the user selected for the main sound(s)
 		ss.predicted_ambient_audios[ss.curr_scene - 1] = sort_ambient_predictions(
 			ss.predicted_ambient_audios[ss.curr_scene - 1], ss.main_audios[ss.curr_scene - 1])
 		# Single-selection box for user to select ambient sound to generate for a scene
@@ -438,7 +438,7 @@ if ss.progress == 2:
 	else:
 		ss.ambient_audios[ss.curr_scene - 1] = "none"
 		ss.scenes_with_ambient[ss.curr_scene - 1] = False
-	# Let user preview the scene on Streamlit UI
+	# Let user preview the video of the scene on Streamlit UI
 	video_file = open("temp/" + str(ss.curr_scene - 1) + ".mp4", "rb")
 	video_bytes = video_file.read()
 	preview.video(video_bytes)
@@ -446,8 +446,8 @@ if ss.progress == 2:
 # If user clicks "Soundify!" button
 if st.button("Soundify!"):
 	scene_counter = 0
+	# For each scene, generate main audio track(s), ambient audio track, and combine them with original video
 	with st.spinner("Generating audio for scenes..."):
-		# For each scene, generate main audio track(s), ambient audio track, and combine them with original video
 		for scene, main_audio, ambient_audio, scene_length in zip(ss.scenes, ss.main_audios, ss.ambient_audios, ss.scene_lengths):
 			# Generate main audio track
 			main_track = generate_audio_for_scene(scene, main_audio, scene_length)
@@ -465,6 +465,6 @@ if st.button("Soundify!"):
 			combined_clip.write_videofile("processed/" + str(scene_counter) + ".mp4", temp_audiofile="temp-audio.m4a",
                                  remove_temp=True, codec="libx264", audio_codec="aac", fps=ss.fps, logger=None)
 			scene_counter += 1
+	# Merge all temporary .mp4 files for each scene into final output video
 	with st.spinner("Merging scenes..."):
-		# Merge all temporary .mp4 files for each scene into final output video
 		merge_scenes()
